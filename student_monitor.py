@@ -79,6 +79,11 @@ def debug_log(message):
 
 def global_exception_handler(exc_type, exc_value, exc_traceback):
     """Ловит все необработанные исключения"""
+    # Игнорируем EXCEPTION_BREAKPOINT (0x80000003) - это может быть ложное срабатывание
+    if IS_WINDOWS and hasattr(exc_value, 'winerror') and exc_value.winerror == 0x80000003:
+        debug_log(f"[ИГНОРИРОВАНИЕ] EXCEPTION_BREAKPOINT (0x80000003) - продолжение работы")
+        return
+    
     error_msg = "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
     debug_log(f"[КРИТИЧЕСКАЯ ОШИБКА] {error_msg}")
     
@@ -90,6 +95,14 @@ def global_exception_handler(exc_type, exc_value, exc_traceback):
 
 
 sys.excepthook = global_exception_handler
+
+# Дополнительно: перехват Windows-исключений
+if IS_WINDOWS:
+    try:
+        # Подавляем диалоги об ошибках Windows
+        ctypes.windll.kernel32.SetErrorMode(0x0001 | 0x0002 | 0x8000)  # SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX | SEM_NOOPENFILEERRORBOX
+    except Exception as e:
+        debug_log(f"[WINDOWS] Не удалось установить режим ошибок: {e}")
 
 
 # ============================================================
@@ -827,7 +840,12 @@ class StudentMonitor:
                         self.cancel_overlay_timer()
                         self.hide_name_overlay()
                         self.log_event("ЗАПРОС ИМЕНИ", f"Ожидание ввода для урока №{lesson['lesson']}")
-                        self.get_student_name()
+                        if self.get_student_name():
+                            # Имя успешно введено - плашка уже показана в get_student_name()
+                            pass
+                        else:
+                            # Окно закрыто по таймауту или имя не введено
+                            debug_log(f"[УРОК] Имя не введено для урока №{lesson['lesson']}")
                     else:
                         if not self.student_name:
                             self.get_student_name()
