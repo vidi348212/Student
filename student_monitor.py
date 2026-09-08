@@ -827,7 +827,12 @@ class StudentMonitor:
                         self.cancel_overlay_timer()
                         self.hide_name_overlay()
                         self.log_event("ЗАПРОС ИМЕНИ", f"Ожидание ввода для урока №{lesson['lesson']}")
-                        self.get_student_name()
+                        if self.get_student_name():
+                            # Имя успешно введено - плашка уже показана в get_student_name()
+                            pass
+                        else:
+                            # Окно закрыто по таймауту или имя не введено
+                            debug_log(f"[УРОК] Имя не введено для урока №{lesson['lesson']}")
                     else:
                         if not self.student_name:
                             self.get_student_name()
